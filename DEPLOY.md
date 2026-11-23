@@ -1,11 +1,43 @@
 # Deploying the bot off your machine
 
-The bot is a Discord **gateway** client: it holds one outbound WebSocket and does not
-need a domain, a callback URL, or an inbound port for Discord itself. It does open one
-inbound port for the map bridge (`/ingest`, `/match`), which is the only reason the
-container exposes anything.
+**Live now:** `https://wave-scrims.fadehost.app` — FadeHost free plan, 256 MB, running
+commit `7a1b8a9`, app id `bot_a0f0390fcc9048bf810db9a194528b46`.
 
-Everything below is free-tier only, no card.
+```
+curl https://wave-scrims.fadehost.app/health
+{"ok":true,"bot":{"ready":true},"guild":"1506550975605768312",...}
+```
+
+That is the same process that holds the Discord gateway and serves `/ingest` and
+`/match`, so the map bridge talks to that hostname and nothing else.
+
+---
+
+## FadeHost (the host that is actually running it)
+
+Free forever, no card, no renewal, no sleep. One free app per account, and a free app
+can take a public address **only if it is created as a web app** — a `Discord bot` app
+gets no address, which is why this one was created with `--kind web`.
+
+```
+npx fadehost login                       # prints a code, approve it in the panel
+npx fadehost apps create \
+  --repo https://github.com/5tcj5876g9-cyber/wave-scrims \
+  --name wave-scrims --kind web --web-address wave-scrims --port 8080 \
+  --tier free \
+  --env DISCORD_TOKEN=... --env INGEST_SECRET=... --env INGEST_PORT=8080
+
+npx fadehost apps logs wave-scrims --tail 80
+npx fadehost apps status wave-scrims
+npx fadehost apps deploy wave-scrims      # after a push to the tracked branch
+```
+
+- The tracked branch is **main**; `master` is pushed to both so either works.
+- `INGEST_PORT=8080` makes the process mount `/ingest` on the public port instead of
+  opening a second, unroutable one.
+- Guild and channel ids come from `config.json` in the repo (ids only, no secret).
+- `autoDeployEnabled` is off by default: after a push run `apps deploy`, or press
+  **Set up deploys on push** on the app page once.
 
 ---
 
@@ -16,14 +48,16 @@ Everything below is free-tier only, no card.
 | always on | the gateway drops when the process is killed, and buttons stop answering |
 | one public HTTP port | the OCR bridge on the host PC POSTs to `/ingest/<matchId>` |
 | env vars | the token must never be inside the image |
+| no card | Render's free plan now demands card verification even at $0 |
 
 A "sleep after 15 minutes of no traffic" web service is the usual trap: the bot is
-online, then silently dies. Fix it with any free uptime pinger hitting `/health` every
-5–10 minutes, or pick a host whose free tier does not sleep.
+online, then silently dies, so a host that advertises no sleep mode matters more than
+raw RAM here.
 
 ---
 
-## Render (recommended free path)
+## Render (free plan documented, blocked by card verification)
+
 
 1. Push this folder to a GitHub repository (private is fine).
 2. Render → **New → Blueprint** → pick the repo. It reads `render.yaml`.
