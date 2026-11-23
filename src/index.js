@@ -15,7 +15,7 @@ import {
   applyMatchEvent, saveState, loadState,
 } from './store.js';
 import {
-  routeButton, routeModal, refreshResults, refreshBoard, refreshDashboard, refreshPanel,
+  routeButton, routeModal, refreshResults, refreshBoard, refreshDashboard, refreshPanel, prunePanels,
 } from './queue.js';
 import { startIngest } from './ingest.js';
 import { resultsEmbed, setBrandIcon } from './render.js';
@@ -48,6 +48,8 @@ client.once(Events.ClientReady, async (c) => {
   // whether or not anything is running.
   try {
     await refreshPanel(c, cfg);
+    const pruned = await prunePanels(c, cfg);
+    if (pruned) console.log(`[bot] removed ${pruned} duplicate control panel(s)`);
   } catch (err) {
     console.error('[bot] could not post the control panel:', err.message);
   }

@@ -414,6 +414,24 @@ export async function refreshPanel(client, cfg) {
   return msg;
 }
 
+// Runs once per boot: a few redeploys in a row would otherwise leave a stack of
+// control panels in the room, each with working buttons pointing at stale state.
+export async function prunePanels(client, cfg) {
+  const ref = getMessageRef('panel');
+  if (!ref) return 0;
+  const ch = await client.channels.fetch(cfg.channels.dashboard);
+  const recent = await ch.messages.fetch({ limit: 25 });
+  const duplicates = [...recent.values()].filter(
+    (m) => m.author.id === client.user.id
+      && m.embeds?.[0]?.title === 'CONTROL'
+      && m.id !== ref.messageId,
+  );
+  for (const duplicate of duplicates) {
+    await duplicate.delete().catch(() => {});
+  }
+  return duplicates.length;
+}
+
 export async function postResults(client, match, cfg) {
   const { resultsEmbed } = await import('./render.js');
   const modeLabel = modeOf(cfg, match.mode)?.label ?? match.mode;
