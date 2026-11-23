@@ -1,17 +1,29 @@
 // HTTP surface for hosting platforms.
 //
-// A free container host expects the process to listen on $PORT and answer a health
-// check, otherwise it decides the service is dead and restarts it in a loop. The bot
-// itself does not need HTTP - the Discord gateway is outbound - so this is a separate
-// tiny server that reports the same state the panel shows.
+// A free container host gives one public port and hits /health to decide whether the
+// process is alive. Discord itself needs no inbound port - the gateway is outbound -
+// so this server exists for two reasons: the health check, and the map bridge, which
+// is mounted here so a single-port host still gets /ingest and /match.
 
 import { createServer } from 'node:http';
 import { listMatches, listQueues, currentQueue, latestMatch } from './store.js';
+import { createIngestHandler } from './ingest.js';
 
-export function startHealth({ client, cfg, port = process.env.PORT ?? 8080 }) {
-  const server = createServer((req, res) => {
-    const body = req.url === '/health' || req.url === '/'
-      ? {
+function json(res, code, obj) {
+  const body = JSON.stringify(obj);
+  res.writeHead(code, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(body),
+  });
+  res.end(body);
+}
+
+export function startHealth({ client, cfg, onEvent, port = process.env.PORT ?? 8080 }) {
+  const ingest = createIngestHandler({ cfg, onEvent });
+
+  const server = createServer(async (req, res) => {
+    if (req.url === '/health' || req.url === '/') {
+      json(res, 200, {
         ok: true,
         uptime: Math.round(process.uptime()),
         bot: client?.user ? { id: client.user.id, tag: client.user.tag, ready: client.isReady() } : null,
@@ -20,19 +32,20 @@ export function startHealth({ client, cfg, port = process.env.PORT ?? 8080 }) {
         match: latestMatch()?.id ?? null,
         counts: { queues: listQueues().length, matches: listMatches().length },
         at: new Date().toISOString(),
-      }
-      : { ok: false, error: 'not found' };
+      });
+      return;
+    }
 
-    const payload = JSON.stringify(body);
-    res.writeHead(body.ok ? 200 : 404, {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(payload),
+    const handled = await ingest(req, res).catch((err) => {
+      console.error('[http]', err.message);
+      json(res, 500, { ok: false, error: 'internal' });
+      return true;
     });
-    res.end(payload);
+    if (!handled) json(res, 404, { ok: false, error: 'not found' });
   });
 
   server.listen(Number(port), '0.0.0.0', () => {
-    console.log(`[health] listening on 0.0.0.0:${port} (/health)`);
+    console.log(`[health] listening on 0.0.0.0:${port} (/health, /ingest, /match)`);
   });
   server.on('error', (err) => console.error('[health]', err.message));
   return server;

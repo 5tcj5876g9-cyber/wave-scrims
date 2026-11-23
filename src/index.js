@@ -241,13 +241,15 @@ async function handleResult(interaction) {
 
 // ---------------------------------------------------------------- start
 
-const events = startIngest({
-  cfg,
-  client,
-  onEvent: async (match) => refreshResults(client, match, cfg),
-});
+const onEvent = async (match) => refreshResults(client, match, cfg);
 
-const health = startHealth({ client, cfg });
+const healthPort = Number(process.env.PORT ?? 8080);
+const ingestPort = Number(process.env.INGEST_PORT ?? cfg.ingest.port);
+
+// Every free host routes exactly one port. The public server mounts /ingest and
+// /match itself, so the standalone listener only starts when it has a port of its own.
+const events = ingestPort === healthPort ? null : startIngest({ cfg, client, onEvent, port: ingestPort });
+const health = startHealth({ client, cfg, onEvent, port: healthPort });
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('DISCORD_TOKEN is not set.');
