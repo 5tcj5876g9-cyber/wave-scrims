@@ -384,10 +384,31 @@ export async function refreshPanel(client, cfg) {
       const msg = await ch.messages.fetch(ref.messageId);
       await msg.edit(payload);
       return msg;
-    } catch { /* message gone, repost */ }
+    } catch { /* message gone, adopt or repost below */ }
   }
 
   const ch = await client.channels.fetch(cfg.channels.dashboard);
+
+  // A hosted process has no state.json on first boot, so it cannot know the id of the
+  // panel it posted last time. Look for it instead of stacking a copy, and clear the
+  // duplicates a few redeploys have left behind.
+  try {
+    const recent = await ch.messages.fetch({ limit: 25 });
+    const mine = [...recent.values()]
+      .filter((m) => m.author.id === client.user.id && m.embeds?.[0]?.title === 'CONTROL')
+      .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    if (mine.length) {
+      for (const duplicate of mine.slice(1)) {
+        await duplicate.delete().catch(() => {});
+      }
+      await mine[0].edit(payload);
+      setMessageRef('panel', ch.id, mine[0].id);
+      return mine[0];
+    }
+  } catch (err) {
+    console.error('[panel] could not scan for an existing panel:', err.message);
+  }
+
   const msg = await ch.send(payload);
   setMessageRef('panel', ch.id, msg.id);
   return msg;
