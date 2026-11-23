@@ -3,14 +3,18 @@
 // lobby is joinable immediately, the demo board is labelled as demo in its content so
 // it is obvious what to delete.
 //
-//   node scripts/demo.js            # lobby only
-//   node scripts/demo.js --results  # lobby + a finished 4v4 board
+//   node scripts/demo.js             # one empty, joinable lobby
+//   node scripts/demo.js --seed      # seed eight placeholder names (for a screenshot)
+//   node scripts/demo.js --seed --results
+//
+// No real result is ever invented: a results board only exists when --results is
+// passed, and it is labelled "demo board" in its own content so it is obvious.
 
 import './../src/env.js';
 import { Client, GatewayIntentBits, Events } from 'discord.js';
 
 import { loadConfig, modeOf } from '../src/config.js';
-import { createQueue, createMatch, applyMatchEvent, saveState } from '../src/store.js';
+import { createQueue, createMatch, applyMatchEvent, saveState, addPlayer, getQueue, setTeams } from '../src/store.js';
 import { refreshBoard, refreshDashboard } from '../src/queue.js';
 import { resultsEmbed, setBrandIcon } from '../src/render.js';
 
@@ -21,6 +25,7 @@ if (!cfg._ready) {
 }
 
 const withResults = process.argv.includes('--results');
+const withSeed = process.argv.includes('--seed') || withResults;
 
 const DEMO = [
   ['100000000000000001', 'fwjamal', 'velithian'],
@@ -49,25 +54,26 @@ client.once(Events.ClientReady, async (c) => {
       channelId: cfg.channels.queue,
     });
 
-    // A fresh board always reads better with bodies on it, so the lobby opens with the
-    // eight demo names already placed. Remove them with Leave before the real scrim.
-    const { addPlayer } = await import('../src/store.js');
-    for (const [discordId, tag, roblox] of DEMO) {
-      addPlayer(queue.id, { discordId, tag, roblox, role: 'player' });
+    // Placeholder names only ever appear when --seed is asked for: a real server must
+    // never show a lobby full of people who are not there.
+    if (withSeed) {
+      for (const [discordId, tag, roblox] of DEMO) {
+        addPlayer(queue.id, { discordId, tag, roblox, role: 'player' });
+      }
+      const full = getQueue(queue.id);
+      setTeams(queue.id, {
+        black: full.players.slice(0, 4),
+        white: full.players.slice(4, 8),
+      });
+      const seeded = getQueue(queue.id);
+      seeded.teams.black[0].role = 'captain';
+      seeded.teams.white[0].role = 'captain';
     }
-    const { getQueue, setTeams } = await import('../src/store.js');
-    const full = getQueue(queue.id);
-    setTeams(queue.id, {
-      black: full.players.slice(0, 4),
-      white: full.players.slice(4, 8),
-    });
-    const ready = getQueue(queue.id);
-    ready.teams.black[0].role = 'captain';
-    ready.teams.white[0].role = 'captain';
 
+    const ready = getQueue(queue.id);
     await refreshBoard(c, ready, cfg);
-    await refreshDashboard(c, ready, cfg);
-    console.log(`lobby    ${queue.id} posted in #${cfg.channels.queue}`);
+    if (ready.teams.black.length) await refreshDashboard(c, ready, cfg);
+    console.log(`lobby    ${queue.id} posted in #${cfg.channels.queue} (${ready.players.length}/${ready.maxPlayers})`);
 
     if (withResults) {
       const match = createMatch({ queueId: ready.id, mode, teams: ready.teams, channelId: cfg.channels.results });
