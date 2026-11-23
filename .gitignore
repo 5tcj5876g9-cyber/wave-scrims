@@ -1,7 +1,6 @@
 node_modules/
 .env
 data/
-config.json
 *.log
 bridge/sample-*.png
 ocr_probe*.py
