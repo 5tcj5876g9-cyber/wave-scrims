@@ -1,0 +1,32 @@
+{
+  "guildId": "000000000000000000",
+  "channels": {
+    "queue": "000000000000000000",
+    "dashboard": "000000000000000000",
+    "results": "000000000000000000",
+    "resultsLog": "000000000000000000"
+  },
+  "roles": {
+    "staff": ""
+  },
+  "links": {
+    "server": null
+  },
+  "modes": {
+    "flat": { "label": "Flat scrims", "maxPlayers": 8, "teamSize": 4, "firstTo": 7, "winBy": 2 },
+    "double": { "label": "Double Decker scrims", "maxPlayers": 8, "teamSize": 4, "firstTo": 11, "winBy": 2 }
+  },
+  "defaultMode": "flat",
+  "split": "random",
+  "ingest": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8099,
+    "secret": "CHANGE-ME-LONG-RANDOM-STRING"
+  },
+  "roblox": {
+    "universeId": null,
+    "placeId": null,
+    "openCloudApiKey": null
+  }
+}

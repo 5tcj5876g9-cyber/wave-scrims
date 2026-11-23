@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: wave-scrims
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
+      - key: CHANNEL_QUEUE
+        sync: false
+      - key: CHANNEL_DASHBOARD
+        sync: false
+      - key: CHANNEL_RESULTS
+        sync: false
+      - key: CHANNEL_LOG
+        sync: false
+      - key: INGEST_SECRET
+        sync: false
+      - key: STAFF_ROLE_ID
+        sync: false
+      - key: PORT
+        value: "8080"
+      - key: INGEST_PORT
+        value: "8099"

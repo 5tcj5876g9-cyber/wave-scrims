@@ -1,0 +1,11 @@
+node_modules
+data
+.env
+*.log
+.git
+bridge
+test
+scripts
+*.md
+config.json
+assets/make-logo.py

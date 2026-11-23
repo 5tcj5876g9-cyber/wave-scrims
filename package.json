@@ -1,0 +1,23 @@
+﻿{
+    "name":  "tbtiers-scrims",
+    "version":  "1.0.0",
+    "private":  true,
+    "type":  "module",
+    "description":  "Discord bot for Roblox 4v4 scrims: join button, 8-player cap, team split, live dashboard, results board, and a pluggable game-data ingest layer.",
+    "main":  "src/index.js",
+    "scripts":  {
+                    "start":  "node src/index.js",
+                    "setup":  "node scripts/setup.js",
+                    "deploy":  "node src/deploy-commands.js",
+                    "selftest":  "node test/selftest.js",
+                    "e2e:ocr":  "node test/ocr-e2e.js",
+                    "status":  "node scripts/status.js",
+                    "demo":  "node scripts/demo.js"
+                },
+    "engines":  {
+                    "node":  "\u003e=20"
+                },
+    "dependencies":  {
+                         "discord.js":  "^14.16.3"
+                     }
+}
